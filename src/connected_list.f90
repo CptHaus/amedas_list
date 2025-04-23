@@ -1,6 +1,6 @@
 program main
     implicit none
-    character(300) :: ifile, ofile
+    character(300) :: ifile, ofile, log_file
     character(20) :: obs_type !Temperature, Precipitation, Wind Speed, ...
 
     integer :: offset(2) !obs_typeで指定した観測種目の"統計の有無"と"統計接続情報"の開始バイト
@@ -12,14 +12,16 @@ program main
     integer :: cntd_flag !統計接続の有無
     integer :: i, ios
 
-    obs_type = 'Precipitation'
-    ifile = '../meta_data/amdmaster.index4.txt'
+    namelist /nam/ obs_type, ifile, ofile, log_file
+    read(5,nam)
+
+    !--- ログを書き出すファイルを開く
+    open(21, file=trim(log_file), action='write', status='replace')
 
     !--- 観測種目に関するデータの位置を取得
     call get_offset(obs_type,offset,rec_len)
 
     !--- 出力ファイルのヘッダーを書き出す
-    ofile = '../csv/' // trim(obs_type) // '_connected_list.csv'
     call write_header(ofile)
 
     open(10, file=trim(ifile), action='read', status='old')
@@ -32,10 +34,12 @@ program main
 
         read(10, '(a)', iostat=ios) amd_info
         if (ios /= 0) exit
-        print *, amd_info(1:26)
 
         !--- 観測されていない場合はスキップ
-        if (amd_info(offset(1):offset(1)+rec_len(1)-1) == '0') cycle
+        if (amd_info(offset(1):offset(1)+rec_len(1)-1) == '0') then
+            obs_flag_pre = 0
+            cycle
+        endif
 
         !--- 前の観測との接続をチェック(cntd_flag: 0->接続なし, 1->接続あり)
         call check_connection(amd_info,obs_type,offset,rec_len,cntd_flag)
@@ -46,17 +50,18 @@ program main
         !--- 同一地点において観測が開始された最初の行の場合はsdateを更新
         if (obs_flag_pre == 0 .and. cntd_flag == 1) then
             sdate = amd_info(216:225) 
-            obs_flag_pre = 1
         endif
+        obs_flag_pre = 1
 
         !--- 現在の観測に関する行かどうかをチェック
         if (amd_info(227:236) == '9999-99-99') then
             !--- amd_infoの基本項目と, obs_typeに関する項目, sdateを書き出す
             call write_amedas_info(ofile,amd_info,sdate)
+            write(21, '(a)') amd_info(1:26) // 'sdate = ' // sdate
         else
             cycle
         endif
-        
+
     enddo !i
 
     contains
