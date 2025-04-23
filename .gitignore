@@ -1,2 +1,4 @@
 src/*.exe
 src/*.bat
+csv/*.csv
+log/*.txt

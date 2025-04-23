@@ -4,7 +4,7 @@
 current_date=$(date +'%Y-%m-%d')
 
 #--- 実行環境における文字のエンコーディング: utf-8, shift-jis
-encd="utf-8"
+encd="shift-jis"
 
 #--- 観測項目を指定: Precipitation, WindSpeed, Temperature, Sunshine, Snow
 obs_type="Precipitation"
